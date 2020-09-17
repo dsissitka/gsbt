@@ -1,0 +1,29 @@
+<html>
+<head>
+  <title>Mashee</title>
+
+  <style>
+    body {
+      margin: 0;
+    }
+
+    body,
+    html {
+      height: 100%;
+      width: 100%;
+    }
+  </style>
+</head>
+<body>
+  <script>
+    document.body.addEventListener("keydown", () => {
+      document.body.style.backgroundColor = "#0f0";
+      //document.body.insertAdjacentHTML("beforeend", `${+new Date()}<br>`);
+
+      setTimeout(() => {
+        document.body.style.backgroundColor = "#fff";
+      }, 100);
+    });
+  </script>
+</body>
+</html>
