@@ -67,32 +67,6 @@ namespace Watcher
             }
         }
 
-        private static Colors GetColor(int red, int green, int blue)
-        {
-            // Even though Mashee and Masher use pure colors (rgb(255, 0, 0) for red, rgb(0, 255, 0) for green,
-            // etcetera) it's unlikely that users will be feeding Watcher lossless videos and so we return red when the
-            // color is almost pure red, green when the color is almost pure green, etcetera.
-            var lowerLimit = Math.Ceiling(255 * 0.1);
-            var upperLimit = Math.Floor(255 * 0.9);
-
-            if (red >= upperLimit && green <= lowerLimit && blue <= lowerLimit)
-            {
-                return Colors.Red;
-            }
-            else if (red <= lowerLimit && green >= upperLimit && blue <= lowerLimit)
-            {
-                return Colors.Green;
-            }
-            else if (red <= lowerLimit && green <= lowerLimit && blue >= upperLimit)
-            {
-                return Colors.Blue;
-            }
-            else
-            {
-                throw new ArgumentException($"Invalid color: rgb({red}, {green}, {blue})");
-            }
-        }
-
         public static List<Frame> ProcessVideo(string path)
         {
             var process = new Process
@@ -116,7 +90,6 @@ namespace Watcher
 
             process.Start();
 
-            //
             return ExtractPngs(process.StandardOutput.BaseStream)
                 .AsParallel()
                 .AsOrdered()
@@ -124,38 +97,38 @@ namespace Watcher
                 {
                     var image = Image.Load<Rgb24>(png);
 
-                    var localX = image.Width / 4;
-                    var localY = image.Height / 2;
-                    var localPixel = image[localX, localY];
-                    var localColor = GetColor(localPixel.R, localPixel.G, localPixel.B);
+                    var localMasheeX = image.Width / 4;
+                    var localMasheeY = image.Height / 2;
+                    var localMasheePixel = image[localMasheeX, localMasheeY];
+                    var localMasheeColor = $"rgb({localMasheePixel.R}, {localMasheePixel.G}, {localMasheePixel.B})";
 
-                    var remoteX = image.Width * 3 / 4;
-                    var remoteY = image.Height / 2;
-                    var remotePixel = image[remoteX, remoteY];
-                    var remoteColor = GetColor(remotePixel.R, remotePixel.G, remotePixel.B);
+                    var masherX = image.Width / 2;
+                    var masherY = image.Height / 2;
+                    var masherPixel = image[masherX, masherY];
+                    var masherColor = $"rgb({masherPixel.R}, {masherPixel.G}, {masherPixel.B})";
 
-                    return new Frame(localColor, remoteColor);
+                    var remoteMasheeX = image.Width * 3 / 4;
+                    var remoteMasheeY = image.Height / 2;
+                    var remoteMasheePixel = image[remoteMasheeX, remoteMasheeY];
+                    var remoteMasheeColor = $"rgb({remoteMasheePixel.R}, {remoteMasheePixel.G}, {remoteMasheePixel.B})";
+
+                    return new Frame(localMasheeColor, masherColor, remoteMasheeColor);
                 })
                 .ToList();
         }
     }
 
-    public enum Colors
-    {
-        Blue,
-        Green,
-        Red,
-    }
-
     public struct Frame
     {
-        public Colors LocalColor { get; }
-        public Colors RemoteColor { get; }
+        public string LocalMasheeColor { get; }
+        public string MasherColor { get; }
+        public string RemoteMasheeColor { get; }
 
-        public Frame(Colors localColor, Colors remoteColor)
+        public Frame(string localMasheeColor, string masherColor, string remoteMasheeColor)
         {
-            LocalColor = localColor;
-            RemoteColor = remoteColor;
+            LocalMasheeColor = localMasheeColor;
+            MasherColor = masherColor;
+            RemoteMasheeColor = remoteMasheeColor;
         }
     }
 }

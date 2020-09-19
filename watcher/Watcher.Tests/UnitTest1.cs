@@ -10,12 +10,18 @@ namespace Watcher.Tests
         [TestMethod]
         public void TestProcessVideo()
         {
+            const string green = "rgb(0, 255, 1)";
+            const string red = "rgb(254, 0, 0)";
+            const string white = "rgb(255, 255, 255)";
+
             CollectionAssert.AreEqual(
                 new List<Frame>
                 {
-                    new Frame(localColor: Colors.Red, remoteColor: Colors.Blue),
-                    new Frame(localColor: Colors.Green, remoteColor: Colors.Green),
-                    new Frame(localColor: Colors.Blue, remoteColor: Colors.Red),
+                    new Frame(white, red, white),
+                    new Frame(white, green, white),
+                    new Frame(green, green, green),
+                    new Frame(white, green, white),
+                    new Frame(white, red, white),
                 },
                 Program.ProcessVideo("video.mp4")
             );
