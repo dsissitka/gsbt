@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
 namespace Watcher.Tests
@@ -6,8 +7,17 @@ namespace Watcher.Tests
     public class UnitTest1
     {
         [TestMethod]
-        public void TestMethod1()
+        public void TestProcessVideo()
         {
+            CollectionAssert.AreEqual(
+                new List<Frame>
+                {
+                    new Frame(localColor: Colors.Red, remoteColor: Colors.Blue),
+                    new Frame(localColor: Colors.Green, remoteColor: Colors.Green),
+                    new Frame(localColor: Colors.Blue, remoteColor: Colors.Red),
+                },
+                Program.ProcessVideo("video.mp4")
+            );
         }
     }
 }
