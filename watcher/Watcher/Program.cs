@@ -1,5 +1,12 @@
 using System;
+using System.Buffers.Binary;
 using System.Collections.Generic;
+using System.Diagnostics;
+using System.IO;
+using System.Linq;
+using System.Text;
+using SixLabors.ImageSharp;
+using SixLabors.ImageSharp.PixelFormats;
 
 namespace Watcher
 {
@@ -8,6 +15,56 @@ namespace Watcher
         static void Main(string[] args)
         {
             Console.WriteLine("Hello World!");
+        }
+
+        private static IEnumerable<MemoryStream> ExtractPngs(Stream stream)
+        {
+            using var binaryReader = new BinaryReader(stream);
+
+            while (true)
+            {
+                var memoryStream = new MemoryStream();
+
+                // Signature
+                var signatureBytes = binaryReader.ReadBytes(8);
+
+                if (signatureBytes.Length == 0)
+                {
+                    yield break;
+                }
+
+                memoryStream.Write(signatureBytes);
+
+                while (true)
+                {
+                    // Length
+                    var lengthBytes = binaryReader.ReadBytes(4);
+                    var lengthInt = BinaryPrimitives.ReadInt32BigEndian(lengthBytes);
+                    memoryStream.Write(lengthBytes);
+
+                    // Type
+                    var typeBytes = binaryReader.ReadBytes(4);
+                    var typeString = Encoding.UTF8.GetString(typeBytes);
+                    memoryStream.Write(typeBytes);
+
+                    // Data
+                    var dataBytes = binaryReader.ReadBytes(lengthInt);
+                    memoryStream.Write(dataBytes);
+
+                    // CRC
+                    var crcBytes = binaryReader.ReadBytes(4);
+                    memoryStream.Write(crcBytes);
+
+                    if (typeString == "IEND")
+                    {
+                        break;
+                    }
+                }
+
+                memoryStream.Position = 0;
+
+                yield return memoryStream;
+            }
         }
 
         private static Colors GetColor(int red, int green, int blue)
@@ -38,16 +95,48 @@ namespace Watcher
 
         public static List<Frame> ProcessVideo(string path)
         {
-            var red = GetColor(229, 26, 26);
-            var green = GetColor(26, 229, 26);
-            var blue = GetColor(26, 26, 229);
+            var process = new Process
+            {
+                StartInfo =
+                {
+                    FileName = "ffmpeg",
+                    RedirectStandardError = true,
+                    RedirectStandardOutput = true,
 
-            var frames = new List<Frame>();
-            frames.Add(new Frame(localColor: red, remoteColor: blue));
-            frames.Add(new Frame(localColor: green, remoteColor: green));
-            frames.Add(new Frame(localColor: blue, remoteColor: red));
+                    ArgumentList =
+                    {
+                        "-i", path,
+                        "-codec:v", "png",
+                        "-f", "image2pipe",
+                        "-vsync", "passthrough",
+                        "-"
+                    }
+                }
+            };
 
-            return frames;
+            process.Start();
+
+            //
+            return ExtractPngs(process.StandardOutput.BaseStream)
+                .AsParallel()
+                .AsOrdered()
+                .Select(png =>
+                {
+                    var image = Image.Load<Rgb24>(png);
+
+                    var localX = image.Width / 4;
+                    var localY = image.Height / 2;
+                    var localPixel = image[localX, localY];
+                    var localColor = GetColor(localPixel.R, localPixel.G, localPixel.B);
+
+                    var remoteX = image.Width * 3 / 4;
+                    var remoteY = image.Height / 2;
+                    var remotePixel = image[remoteX, remoteY];
+                    var remoteColor = GetColor(remotePixel.R, remotePixel.G, remotePixel.B);
+
+                    return new Frame(localColor, remoteColor);
+                })
+                .ToList();
         }
     }
 

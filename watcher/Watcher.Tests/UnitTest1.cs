@@ -6,6 +6,7 @@ namespace Watcher.Tests
     [TestClass]
     public class UnitTest1
     {
+        [DeploymentItem("../../../data/video.mp4")]
         [TestMethod]
         public void TestProcessVideo()
         {
