@@ -3,7 +3,6 @@ using System.Buffers.Binary;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
-using System.Linq;
 using System.Text;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.PixelFormats;
@@ -20,9 +19,7 @@ namespace Watcher
                 Environment.Exit(1);
             }
 
-            var frames = GetFramesFromVideo(args[0])
-                .AsParallel()
-                .AsOrdered();
+            var frames = GetFramesFromVideo(args[0]);
 
             foreach (var frame in frames)
             {
