@@ -19,7 +19,7 @@ namespace Watcher
                 Console.Error.WriteLine("usage: watcher VIDEO_PATH");
                 Environment.Exit(1);
             }
-            
+
             var frames = GetFramesFromVideo(args[0])
                 .AsParallel()
                 .AsOrdered();
@@ -30,7 +30,7 @@ namespace Watcher
 
                 frame.Dispose();
 
-                Console.WriteLine($"{colors.LocalMasheeColor} {colors.MasherColor} {colors.RemoteMasheeColor}");
+                Console.WriteLine(colors);
             }
         }
 
@@ -41,27 +41,24 @@ namespace Watcher
             var localMasheeX = image.Width * 1 / 4;
             var localMasheeY = image.Height * 1 / 2;
             var localMasheePixel = image[localMasheeX, localMasheeY];
-            var localMasheeColor = $"rgb({localMasheePixel.R}, {localMasheePixel.G}, {localMasheePixel.B})";
 
             var masherX = image.Width * 1 / 2;
             var masherY = image.Height * 1 / 2;
             var masherPixel = image[masherX, masherY];
-            var masherColor = $"rgb({masherPixel.R}, {masherPixel.G}, {masherPixel.B})";
 
             var remoteMasheeX = image.Width * 3 / 4;
             var remoteMasheeY = image.Height * 1 / 2;
             var remoteMasheePixel = image[remoteMasheeX, remoteMasheeY];
-            var remoteMasheeColor = $"rgb({remoteMasheePixel.R}, {remoteMasheePixel.G}, {remoteMasheePixel.B})";
 
-            return new Colors(localMasheeColor, masherColor, remoteMasheeColor);
+            return new Colors(localMasheePixel, masherPixel, remoteMasheePixel);
         }
 
-        private static MemoryStream GetFrameFromVideo(BinaryReader video)
+        private static MemoryStream GetFrameFromFrames(BinaryReader frames)
         {
             var frame = new MemoryStream();
 
             // Signature
-            var signatureBytes = video.ReadBytes(8);
+            var signatureBytes = frames.ReadBytes(8);
 
             if (signatureBytes.Length == 0)
             {
@@ -73,21 +70,21 @@ namespace Watcher
             while (true)
             {
                 // Length
-                var lengthBytes = video.ReadBytes(4);
+                var lengthBytes = frames.ReadBytes(4);
                 var lengthInt = BinaryPrimitives.ReadInt32BigEndian(lengthBytes);
                 frame.Write(lengthBytes);
 
                 // Type
-                var typeBytes = video.ReadBytes(4);
+                var typeBytes = frames.ReadBytes(4);
                 var typeString = Encoding.UTF8.GetString(typeBytes);
                 frame.Write(typeBytes);
 
                 // Data
-                var dataBytes = video.ReadBytes(lengthInt);
+                var dataBytes = frames.ReadBytes(lengthInt);
                 frame.Write(dataBytes);
 
                 // CRC
-                var crcBytes = video.ReadBytes(4);
+                var crcBytes = frames.ReadBytes(4);
                 frame.Write(crcBytes);
 
                 if (typeString == "IEND")
@@ -103,8 +100,7 @@ namespace Watcher
 
         public static IEnumerable<MemoryStream> GetFramesFromVideo(string path)
         {
-            //
-            var process = new Process
+            using var process = new Process
             {
                 StartInfo =
                 {
@@ -125,12 +121,12 @@ namespace Watcher
 
             process.Start();
 
-            //
-            using var video = new BinaryReader(process.StandardOutput.BaseStream);
+            using var frames = new BinaryReader(process.StandardOutput.BaseStream);
 
+            //
             while (true)
             {
-                var frame = GetFrameFromVideo(video);
+                var frame = GetFrameFromFrames(frames);
 
                 if (frame == null)
                 {
@@ -148,11 +144,16 @@ namespace Watcher
         public string MasherColor { get; }
         public string RemoteMasheeColor { get; }
 
-        public Colors(string localMasheeColor, string masherColor, string remoteMasheeColor)
+        public Colors(Rgb24 localMasheePixel, Rgb24 masherPixel, Rgb24 remoteMasheePixel)
         {
-            LocalMasheeColor = localMasheeColor;
-            MasherColor = masherColor;
-            RemoteMasheeColor = remoteMasheeColor;
+            LocalMasheeColor = $"rgb({localMasheePixel.R}, {localMasheePixel.G}, {localMasheePixel.B})";
+            MasherColor = $"rgb({masherPixel.R}, {masherPixel.G}, {masherPixel.B})";
+            RemoteMasheeColor = $"rgb({remoteMasheePixel.R}, {remoteMasheePixel.G}, {remoteMasheePixel.B})";
+        }
+
+        public override string ToString()
+        {
+            return $"{LocalMasheeColor} {MasherColor} {RemoteMasheeColor}";
         }
     }
 }

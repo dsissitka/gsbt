@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
+using SixLabors.ImageSharp.PixelFormats;
 
 namespace Watcher.Tests
 {
@@ -11,9 +12,9 @@ namespace Watcher.Tests
         [TestMethod]
         public void Test()
         {
-            const string green = "rgb(0, 255, 1)";
-            const string red = "rgb(254, 0, 0)";
-            const string white = "rgb(255, 255, 255)";
+            var green = new Rgb24(0, 255, 1);
+            var red = new Rgb24(254, 0, 0);
+            var white = new Rgb24(255, 255, 255);
 
             var expectedColors = new List<Colors>
             {
