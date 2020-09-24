@@ -1,6 +1,7 @@
 using System;
 using System.Buffers.Binary;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
 using System.Text;
@@ -19,6 +20,49 @@ namespace Watcher
                 Environment.Exit(1);
             }
 
+            // Ensure FFmpeg and FFprobe are installed. Check FFmpeg first because FFprobe should be included with
+            // FFmpeg.
+            if (!CheckIfProgramIsInstalled("ffmpeg", "-version"))
+            {
+                Console.Error.WriteLine("FFmpeg must be installed.");
+                Environment.Exit(1);
+            }
+
+            if (!CheckIfProgramIsInstalled("ffprobe", "-version"))
+            {
+                Console.Error.WriteLine("FFprobe must be installed.");
+                Environment.Exit(1);
+            }
+
+            // Ensure the video is an MP4.
+            using var process = new Process
+            {
+                StartInfo =
+                {
+                    FileName = "ffprobe",
+                    RedirectStandardOutput = true,
+
+                    ArgumentList =
+                    {
+                        "-loglevel", "warning",
+                        "-print_format", "csv=print_section=0",
+                        "-show_entries", "format=format_long_name",
+                        args[0]
+                    }
+                }
+            };
+
+            process.Start();
+            var standardOutput = process.StandardOutput.ReadToEnd();
+            process.WaitForExit();
+
+            if (standardOutput != "QuickTime / MOV\n")
+            {
+                Console.Error.WriteLine("The video must be an MP4.");
+                Environment.Exit(1);
+            }
+
+            //
             var frames = GetFramesFromVideo(args[0]);
 
             foreach (var frame in frames)
@@ -28,6 +72,32 @@ namespace Watcher
                 frame.Dispose();
 
                 Console.WriteLine(colors);
+            }
+        }
+
+        private static bool CheckIfProgramIsInstalled(string fileName, string arguments)
+        {
+            using var process = new Process
+            {
+                StartInfo =
+                {
+                    FileName = fileName,
+                    Arguments = arguments,
+                    RedirectStandardError = true,
+                    RedirectStandardOutput = true,
+                }
+            };
+
+            try
+            {
+                process.Start();
+                process.WaitForExit();
+
+                return true;
+            }
+            catch (Win32Exception)
+            {
+                return false;
             }
         }
 
@@ -137,9 +207,9 @@ namespace Watcher
 
     public readonly struct Colors
     {
-        public string LocalMasheeColor { get; }
-        public string MasherColor { get; }
-        public string RemoteMasheeColor { get; }
+        private string LocalMasheeColor { get; }
+        private string MasherColor { get; }
+        private string RemoteMasheeColor { get; }
 
         public Colors(Rgb24 localMasheePixel, Rgb24 masherPixel, Rgb24 remoteMasheePixel)
         {
